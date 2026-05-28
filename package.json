@@ -1,0 +1,12 @@
+{
+  "name": "essquiz",
+  "version": "1.0.0",
+  "description": "ESA Quiz display system",
+  "main": "relay.js",
+  "scripts": {
+    "start": "node relay.js"
+  },
+  "dependencies": {
+    "ws": "^8.19.0"
+  }
+}
