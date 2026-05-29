@@ -5,32 +5,60 @@ of [esalowerthird](https://github.com/skenmy/esalowerthird) focused
 exclusively on the quiz format.
 
 - **`/source.html`** — the OBS browser source. Transparent background;
-  renders the active quiz question + answer reveals on cue. Listen
-  only.
-- **`/control.html`** — the operator panel. Loads question banks,
-  picks the next question, reveals answers, shows scores.
+  renders the active question, answer reveal, holding screen and
+  leaderboard on cue.
+- **`/control.html`** — the operator panel. Imports a question file,
+  steps through questions, reveals answers, manages player scores,
+  shows/hides the leaderboard. State persists in `localStorage`.
+
+Visiting `/` redirects to `control.html`.
 
 Live at **<https://esaquiz.skenmy.com>** — `/control.html` is gated
 behind a Twitch sign-in via [tools.skenmy.com](https://tools.skenmy.com).
 
 ## What the relay does
 
-`relay.js` is small (~100 lines): it serves the two HTML files and
-relays JSON messages between connected clients. There are no external
+`relay.js` (~100 lines) serves the two HTML files and relays JSON
+messages between connected clients on `/ws`. There are no external
 APIs to poll — questions live in `localStorage` on the operator's
-machine and are broadcast on demand.
+machine and are broadcast on demand. The only dependency is `ws`.
+
+The relay also sends a `clients` count broadcast on connect/disconnect
+and a `ping` every 30s; everything else it doesn't recognise is
+forwarded verbatim to all *other* clients.
+
+## Question file format
+
+Tab-separated `.txt` / `.tsv` / `.csv`, header row skipped. Columns:
+
+| col | field |
+|---|---|
+| 0 | round number |
+| 1 | question number |
+| 2 | question text |
+| 3 | image URL (optional) |
+| 4 | answer text |
+| 5 | notes (optional) |
 
 ## WebSocket protocol
 
 Every message is `{ type, … }`. The relay forwards every message it
-doesn't recognise to every other client.
+doesn't recognise to every other client. Control → source unless
+stated otherwise.
 
-| type | direction | payload |
-|---|---|---|
-| `question_show` | control → source | `{ question, choices?, image? }` |
-| `answer_reveal` | control → source | `{ answer, explanation? }` |
-| `scores_show` | control → source | `{ scores: [{name, points}] }` |
-| `hide` | control → source | `{}` |
+| type | payload |
+|---|---|
+| `show_question` | `{ roundNo, questionNo, questionText, imageUrl }` |
+| `hide_question` | `{}` |
+| `show_answer` | `{ answerText, notes }` |
+| `hide_answer` | `{}` |
+| `show_holding` | `{ title, subtitle, logoUrl }` |
+| `hide_holding` | `{}` |
+| `show_leaderboard` | `{ players: [{ name, score }] }` |
+| `hide_leaderboard` | `{}` |
+| `hide_all` | `{}` |
+| `clients` | `{ count }` — relay → all |
+| `ping` / `pong` | `{}` — keepalive, 30s interval |
 
 ## Env
 
@@ -41,7 +69,9 @@ doesn't recognise to every other client.
 ## Local dev
 
 ```sh
+npm install
 ./serve.sh                       # http://localhost:8080
+# or: npm start
 ```
 
 OBS browser source URL: `http://localhost:8080/source.html`
